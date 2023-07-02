@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <map>
 
 // Prevent circular include
 class Bus;
@@ -39,6 +40,15 @@ public:
     void irq();		// Interrupt Request - Executes an instruction at a specific location
     void nmi();		// Non-Maskable Interrupt Request - As above, but cannot be disabled
     void clock();	// Perform one clock cycle's worth of update
+    
+    // Indicates the current instruction has completed by returning true. This is
+	// a utility function to enable "step-by-step" execution, without manually 
+	// clocking every cycle
+	bool complete();
+
+    // Produces a map of strings, with keys equivalent to instruction start locations
+    // in memory, for the specified address range
+    std::map<uint16_t, std::string> disassemble(uint16_t nStart, uint16_t nStop);
     
 private:
     // Addressing Modes
