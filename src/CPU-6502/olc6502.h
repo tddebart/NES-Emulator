@@ -50,6 +50,9 @@ public:
     // in memory, for the specified address range
     std::map<uint16_t, std::string> disassemble(uint16_t nStart, uint16_t nStop);
     
+    uint8_t GetFlag(FLAGS6502 f);
+    void    SetFlag(FLAGS6502 f, bool v);
+    
 private:
     // Addressing Modes
     uint8_t IMP();	uint8_t IMM();
@@ -111,7 +114,4 @@ private:
     Bus *bus = nullptr;
     void write(uint16_t address, uint8_t data);
     uint8_t read(uint16_t address, bool bReadOnly = false);
-    
-    uint8_t GetFlag(FLAGS6502 f);
-    void    SetFlag(FLAGS6502 f, bool v);
 };
