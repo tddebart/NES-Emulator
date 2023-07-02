@@ -24,7 +24,7 @@
 # Compiled Static libraries
 *.lai
 *.la
-*.a
+*.c
 *.lib
 
 # Executables
