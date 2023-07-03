@@ -9,8 +9,12 @@
 static TTF_Font* font;
 const int FONT_SIZE = 20;
 
+std::shared_ptr<Cartridge> cartridge;
 Bus nes;
 std::map<uint16_t, std::string> disassembly;
+
+bool emulationRunning = false;
+unsigned long nextFrameTime = 0;
 
 void update();
 void init();
@@ -37,7 +41,7 @@ void drawRam(Vector2 pos, uint16_t address, int nRows, int nCols) {
     for (int row = 0; row < nRows; row++) {
         std::string s = "$" + hex(address, 4) + ": ";
         for (int col = 0; col < nCols; col++) {
-            s += hex(nes.read(address), 2) + " ";
+            s += hex(nes.cpuRead(address), 2) + " ";
             address++;
         }
         drawText(s.c_str(), pos, color);
@@ -143,70 +147,74 @@ int main() {
 }
 
 void init() {
-    // Load Program (assembled at https://www.masswerk.at/6502/assembler.html)
-    /*
-        *=$8000
-        LDX #10
-        STX $0000
-        LDX #3
-        STX $0001
-        LDY $0000
-        LDA #0
-        CLC
-        loop
-        ADC $0001
-        DEY
-        BNE loop
-        STA $0002
-        NOP
-        NOP
-        NOP
-    */
-
-    // Convert hex string into bytes for RAM
-    std::stringstream ss;
-    ss << "A2 0A 8E 00 00 A2 03 8E 01 00 AC 00 00 A9 00 18 6D 01 00 88 D0 FA 8D 02 00 EA EA EA";
-    uint16_t nOffset = 0x8000;
-    while (!ss.eof())
-    {
-        std::string b;
-        ss >> b;
-        nes.ram[nOffset++] = (uint8_t)std::stoul(b, nullptr, 16);
-    }
+    // Load the cartridge
+    cartridge = std::make_shared<Cartridge>("nestest.nes");
     
-    // Set Reset Vector
-    nes.ram[0xFFFC] = 0x00;
-    nes.ram[0xFFFD] = 0x80;
+    // Insert into NES
+    nes.insertCartridge(cartridge);
     
+    // Extract dissassembly
     disassembly = nes.cpu.disassemble(0x0000, 0xFFFF);
     
-    nes.cpu.reset();
+    // Reset NES
+    nes.reset();
 }
 
 void update() {
-    // Input
-    if (isKeyPressed(SDL_SCANCODE_SPACE)) {
-        do {
-            nes.cpu.clock();
-        } while (!nes.cpu.complete());
+    if (emulationRunning) {
+        
+        if (SDL_GetTicks64() > nextFrameTime) {
+            do {
+                nes.clock();
+            } while (!nes.ppu.frame_complete);
+            nes.ppu.frame_complete = false;
+            
+            nextFrameTime = SDL_GetTicks64() + 1000.0f/60.0f;
+        }
+        
+    } else {
+        // Emulate code step-by-step
+        if (isKeyPressed(SDL_SCANCODE_C)) {
+            // Clock enough times to execute a whole instruction
+            do {
+                nes.clock();
+            } while (!nes.cpu.complete());
+            // Drain the clock to complete the instruction
+            do {
+                nes.clock();
+            } while (nes.cpu.complete());
+        }
+
+        // Emulate one whole frame
+        if (isKeyPressed(SDL_SCANCODE_F)) {
+            do {
+                nes.clock();
+            } while (!nes.ppu.frame_complete);
+
+            // Use residual cycles to complete current instruction
+            do {
+                nes.clock();
+            } while (!nes.cpu.complete());
+
+            // Reset frame completion flag
+            nes.ppu.frame_complete = false;
+        }
     }
     
+    // Reset
     if (isKeyPressed(SDL_SCANCODE_R)) {
-        nes.cpu.reset();
+        nes.reset();
     }
-    
-    if (isKeyPressed(SDL_SCANCODE_I)) {
-        nes.cpu.irq();
+    // Toggle emulation
+    if (isKeyPressed(SDL_SCANCODE_SPACE)) {
+        emulationRunning = !emulationRunning;
     }
-    
-    if (isKeyPressed(SDL_SCANCODE_N)) {
-        nes.cpu.nmi();
-    }
-    
-    drawRam(Vector2(2, 2), 0x0000, 16, 16);
-    drawRam(Vector2(2, 2 + (FONT_SIZE+2) * 18), 0x8000, 16, 16);
+
     drawCpu(Vector2(SCREEN_WIDTH - (2 + (FONT_SIZE+2) * 17), 2));
     drawCode(Vector2(SCREEN_WIDTH - (2 + (FONT_SIZE+2) * 17), 2 + (FONT_SIZE+2) * 7), 26);
-
-    drawText("SPACE = Step Instruction    R = RESET    I = IRQ    N = NMI", Vector2(2, SCREEN_HEIGHT - (FONT_SIZE - 2) * 3), {255, 255, 255});
+    
+    // Copy the ppu surface scaled x3
+    SDL_UpdateTexture(nes.ppu.texture, nullptr, &nes.ppu.buffer, nes_width * sizeof(uint32_t));
+    auto dstRect = SDL_Rect{0, 0, nes_width*3, nes_height*3};
+    SDL_RenderCopy(renderer, nes.ppu.GetScreen(), nullptr, &dstRect);
 }
