@@ -8,6 +8,7 @@
 
 const int nes_width = 256;
 const int nes_height = 240;
+const int pattern_width = 128;
 
 class PPU {
 private:
@@ -29,8 +30,12 @@ public:
     void ConnectCartridge(const std::shared_ptr<Cartridge>& cartridge);
     void clock();
     
-    SDL_Texture* texture;
-    uint32_t buffer[nes_height*nes_width];
+    SDL_Texture* screenTexture;
+    uint32_t screenBuffer[nes_height * nes_width];
+    SDL_Texture* nameTableTexture[2];
+    uint32_t nameTableBuffer[2][256 * 240];
+    SDL_Texture* patternTableTexture[2];
+    uint32_t patternTableBuffer[2][pattern_width * pattern_width];
 private:
     // The Cartridge or "GamePak"
     std::shared_ptr<Cartridge> cartridge;
@@ -43,7 +48,11 @@ private:
     
 public:
     // Debugging Utilities
-    void DrawPixel(int x, int y, SDL_Color c);
-    SDL_Texture* GetScreen();
+    void DrawPixel(uint32_t buffer[], int x, int y, SDL_Color c, int maxX = nes_width, int maxY = nes_height);
+    SDL_Texture* GetScreen() const;
+    SDL_Texture* GetNameTable(uint8_t i);
+    SDL_Texture* GetPatternTable(uint8_t i, uint8_t palette);
     bool frame_complete = false;
+
+    SDL_Color GetColorFromPaletteRam(uint8_t palette, uint8_t pixel);
 };

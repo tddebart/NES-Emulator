@@ -16,6 +16,8 @@ std::map<uint16_t, std::string> disassembly;
 bool emulationRunning = false;
 unsigned long nextFrameTime = 0;
 
+uint8_t selectedPalette = 0x00;
+
 void update();
 void init();
 
@@ -209,12 +211,43 @@ void update() {
     if (isKeyPressed(SDL_SCANCODE_SPACE)) {
         emulationRunning = !emulationRunning;
     }
+    // Toggle pattern table
+    if (isKeyPressed(SDL_SCANCODE_P)) {
+        (++selectedPalette) &= 0x07;
+    }
 
-    drawCpu(Vector2(SCREEN_WIDTH - (2 + (FONT_SIZE+2) * 17), 2));
-    drawCode(Vector2(SCREEN_WIDTH - (2 + (FONT_SIZE+2) * 17), 2 + (FONT_SIZE+2) * 7), 26);
+    drawCpu( Vector2(nes_width*4 + 10, 2));
+    drawCode(Vector2(nes_width*4 + 10, 2 + (FONT_SIZE+2) * 7), 22);
     
-    // Copy the ppu surface scaled x3
-    SDL_UpdateTexture(nes.ppu.texture, nullptr, &nes.ppu.buffer, nes_width * sizeof(uint32_t));
+    // Copy the ppu screen scaled x3
+    SDL_UpdateTexture(nes.ppu.screenTexture, nullptr, &nes.ppu.screenBuffer, nes_width * sizeof(uint32_t));
     auto dstRect = SDL_Rect{0, 0, nes_width*4, nes_height*4};
     SDL_RenderCopy(renderer, nes.ppu.GetScreen(), nullptr, &dstRect);
+    
+    // Draw palettes
+    const int swatchSize = 13;
+    for (int p = 0; p < 8; p++) {
+        for (int s = 0; s < 4; s++) {
+            auto color = nes.ppu.GetColorFromPaletteRam(p, s);
+            SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, 255);
+            SDL_Rect rect = { 1034 + p * (swatchSize * 5) + s * swatchSize , SCREEN_HEIGHT-pattern_width*2-32, swatchSize, swatchSize };
+            SDL_RenderFillRect(renderer, &rect);
+        }
+    }
+    
+    // Draw the selected palette outline
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    SDL_Rect rect = { 1034 + selectedPalette * (swatchSize * 5) - 1, SCREEN_HEIGHT-pattern_width*2-33, swatchSize * 4 + 1, swatchSize + 1 };
+    SDL_RenderDrawRect(renderer, &rect);
+    
+    // Draw the pattern tables
+    SDL_Texture* patternTable1 = nes.ppu.GetPatternTable(0, selectedPalette);
+    SDL_Texture* patternTable2 = nes.ppu.GetPatternTable(1, selectedPalette);
+    SDL_UpdateTexture(patternTable1, nullptr, &nes.ppu.patternTableBuffer[0], pattern_width * sizeof(uint32_t));
+    SDL_UpdateTexture(patternTable2, nullptr, &nes.ppu.patternTableBuffer[1], pattern_width * sizeof(uint32_t));
+
+    auto pattern1Rect = SDL_Rect{nes_width*4 + 10, SCREEN_HEIGHT-pattern_width*2-10, pattern_width*2, pattern_width*2};
+    SDL_RenderCopy(renderer, patternTable1, nullptr, &pattern1Rect);
+    auto pattern2Rect = SDL_Rect{(nes_width*4 + 10)+pattern_width*2+10, SCREEN_HEIGHT-pattern_width*2-10, pattern_width*2, pattern_width*2};
+    SDL_RenderCopy(renderer, patternTable2, nullptr, &pattern2Rect);
 }

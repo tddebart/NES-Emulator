@@ -71,8 +71,42 @@ PPU::PPU() {
     palScreen[0x3D] = SDL_Color(160, 162, 160);
     palScreen[0x3E] = SDL_Color(0, 0, 0);
     palScreen[0x3F] = SDL_Color(0, 0, 0);
+}
 
-//    buffer = {0xFFFFFFFF};
+SDL_Texture *PPU::GetScreen() const {
+    return screenTexture;
+}
+
+SDL_Texture *PPU::GetNameTable(uint8_t i) {
+    return nameTableTexture[i];
+}
+
+SDL_Texture *PPU::GetPatternTable(uint8_t i, uint8_t palette) {
+    for (uint16_t nTileY = 0; nTileY < 16; nTileY++) {
+        for (uint16_t nTileX = 0; nTileX < 16; nTileX++) {
+            uint16_t nOffset = nTileY * 256 + nTileX * 16;
+
+            for (uint16_t row = 0; row < 8; row++) {
+                uint8_t tile_lsb = ppuRead(i * 0x1000 + nOffset + row + 0x0000);
+                uint8_t tile_msb = ppuRead(i * 0x1000 + nOffset + row + 0x0008);
+
+                for (uint16_t col = 0; col < 8; col++) {
+                    uint8_t pixel = (tile_lsb & 0x01) + (tile_msb & 0x01);
+                    tile_lsb >>= 1; tile_msb >>= 1;
+
+                    auto x = nTileX * 8 + (7 - col);
+                    auto y = nTileY * 8 + row;
+                    DrawPixel(patternTableBuffer[i], x, y, GetColorFromPaletteRam(palette, pixel), pattern_width, pattern_width);
+                }
+            }
+        }
+    }
+    
+    return patternTableTexture[i];
+}
+
+SDL_Color PPU::GetColorFromPaletteRam(uint8_t palette, uint8_t pixel) {
+    return palScreen[ppuRead(0x3F00 + (palette << 2) + pixel) & 0x3F];
 }
 
 uint8_t PPU::cpuRead(uint16_t addr, bool rdonly) {
@@ -130,6 +164,25 @@ uint8_t PPU::ppuRead(uint16_t addr, bool rdonly) {
     if (cartridge->ppuRead(addr, data)) {
         
     }
+    // Pattern table
+    else if (addr >= 0x0000 && addr <= 0x1FFF) {
+        data = tblPattern[(addr & 0x1000) >> 12][addr & 0x0FFF];
+    }
+    // Name table
+    else if (addr >= 0x2000 && addr <= 0x3EFF) {
+        
+    }
+    // Palette RAM
+    else if (addr >= 0x3F00 && addr <= 0x3FFF) {
+        addr &= 0x001F;
+        // Mirroring
+        if (addr == 0x0010) addr = 0x0000;
+        if (addr == 0x0014) addr = 0x0004;
+        if (addr == 0x0018) addr = 0x0008;
+        if (addr == 0x001C) addr = 0x000C;
+        
+        data = tblPalette[addr];
+    }
     
     return data;
 }
@@ -140,20 +193,61 @@ void PPU::ppuWrite(uint16_t addr, uint8_t data) {
     if (cartridge->ppuWrite(addr, data)) {
         
     }
+    // Pattern table
+    else if (addr >= 0x0000 && addr <= 0x1FFF) {
+        // Usually a ROM
+        tblPattern[(addr & 0x1000) >> 12][addr & 0x0FFF] = data;
+    }
+    // Name table
+    else if (addr >= 0x2000 && addr <= 0x3EFF) {
+
+    }
+    // Palette RAM
+    else if (addr >= 0x3F00 && addr <= 0x3FFF) {
+        addr &= 0x001F;
+        // Mirroring
+        if (addr == 0x0010) addr = 0x0000;
+        if (addr == 0x0014) addr = 0x0004;
+        if (addr == 0x0018) addr = 0x0008;
+        if (addr == 0x001C) addr = 0x000C;
+
+        tblPalette[addr] = data;
+    }
 }
 
-void PPU::ConnectCartridge(const std::shared_ptr<Cartridge> &cartridge) {
+void PPU::ConnectCartridge(const std::shared_ptr<Cartridge>& cartridge) {
     this->cartridge = cartridge;
-    // Also make screen texture
-    if (texture != nullptr) {
-        SDL_DestroyTexture(texture);
+    
+    // Make screenTexture
+    if (screenTexture != nullptr) {
+        SDL_DestroyTexture(screenTexture);
     }
-    texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, nes_width, nes_height);
+    screenTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, nes_width, nes_height);
+    
+    // Make nameTableTexture
+    if (nameTableTexture[0] != nullptr) {
+        SDL_DestroyTexture(nameTableTexture[0]);
+    }
+    if (nameTableTexture[1] != nullptr) {
+        SDL_DestroyTexture(nameTableTexture[1]);
+    }
+    nameTableTexture[0] = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, nes_width, nes_height);
+    nameTableTexture[1] = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, nes_width, nes_height);
+    
+    // Make patternTableTexture
+    if (patternTableTexture[0] != nullptr) {
+        SDL_DestroyTexture(patternTableTexture[0]);
+    }
+    if (patternTableTexture[1] != nullptr) {
+        SDL_DestroyTexture(patternTableTexture[1]);
+    }
+    patternTableTexture[0] = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, pattern_width, pattern_width);
+    patternTableTexture[1] = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, pattern_width, pattern_width);
 }
 
 void PPU::clock() {
     // Fake some noise for now
-    DrawPixel(cycle - 1, scanline,  palScreen[(rand() % 2) ? 0x3F : 0x30]);
+    DrawPixel(screenBuffer, cycle - 1, scanline,  palScreen[(rand() % 2) ? 0x3F : 0x30]);
 
     // Advance renderer - it never stops, it's relentless
     cycle++;
@@ -167,14 +261,10 @@ void PPU::clock() {
     }
 }
 
-void PPU::DrawPixel(int x, int y, SDL_Color c) {
-    if (x >= nes_width || y >= nes_height || x < 0 || y < 0) {
+void PPU::DrawPixel(uint32_t buffer[], int x, int y, SDL_Color c, int maxX, int maxY) {
+    if (x >= maxX || y >= maxY || x < 0 || y < 0) {
         return;
     }
 
-    buffer[(y * nes_width) + x] = (c.r << 24) | (c.g << 16) | (c.b << 8) | 0xFF;
-}
-
-SDL_Texture *PPU::GetScreen() {
-    return texture;
+    buffer[(y * maxX) + x] = (c.r << 24) | (c.g << 16) | (c.b << 8) | 0xFF;
 }
