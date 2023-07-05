@@ -27,6 +27,8 @@ bool Mapper_000::ppuMapRead(uint16_t addr, uint32_t &mapped_addr) {
         mapped_addr = addr;
         return true;
     }
+    
+    return false;
 }
 
 bool Mapper_000::ppuMapWrite(uint16_t addr, uint32_t &mapped_addr) {

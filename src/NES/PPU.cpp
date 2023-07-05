@@ -119,6 +119,10 @@ uint8_t PPU::cpuRead(uint16_t addr, bool rdonly) {
         case 0x0001: // Mask
             break;
         case 0x0002: // Status
+            status.vertical_blank = 1;
+            data = (status.reg & 0xE0) | (ppu_data_buffer & 0x1F);
+            status.vertical_blank = 0;
+            address_latch = 0;
             break;
         case 0x0003: // OAM Address
             break;
@@ -129,6 +133,14 @@ uint8_t PPU::cpuRead(uint16_t addr, bool rdonly) {
         case 0x0006: // PPU Address
             break;
         case 0x0007: // PPU Data
+            // Reads are delayed by one cycle, so output buffer which was written to
+            // during the previous read is returned instead
+            data = ppu_data_buffer;
+            ppu_data_buffer = ppuRead(ppu_addr);
+            
+            // In pallete range, the data is not delayed
+            if (ppu_addr >= 0x3F00) data = ppu_data_buffer;
+            ppu_addr++;
             break;
     }
 
@@ -139,8 +151,10 @@ void PPU::cpuWrite(uint16_t addr, uint8_t data) {
     switch (addr)
     {
         case 0x0000: // Control
+            control.reg = data;
             break;
         case 0x0001: // Mask
+            mask.reg = data;
             break;
         case 0x0002: // Status
             break;
@@ -151,8 +165,18 @@ void PPU::cpuWrite(uint16_t addr, uint8_t data) {
         case 0x0005: // Scroll
             break;
         case 0x0006: // PPU Address
+            if (address_latch == 0) {
+                ppu_addr = (ppu_addr & 0x00FF) | (data << 8);
+                address_latch = 1;
+            }
+            else {
+                ppu_addr = (ppu_addr & 0xFF00) | data;
+                address_latch = 0;
+            }
             break;
         case 0x0007: // PPU Data
+            ppuWrite(ppu_addr, data);
+            ppu_addr++;
             break;
     }
 }
