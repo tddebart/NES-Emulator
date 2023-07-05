@@ -215,6 +215,6 @@ void update() {
     
     // Copy the ppu surface scaled x3
     SDL_UpdateTexture(nes.ppu.texture, nullptr, &nes.ppu.buffer, nes_width * sizeof(uint32_t));
-    auto dstRect = SDL_Rect{0, 0, nes_width*3, nes_height*3};
+    auto dstRect = SDL_Rect{0, 0, nes_width*4, nes_height*4};
     SDL_RenderCopy(renderer, nes.ppu.GetScreen(), nullptr, &dstRect);
 }

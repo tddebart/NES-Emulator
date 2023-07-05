@@ -145,6 +145,9 @@ void PPU::ppuWrite(uint16_t addr, uint8_t data) {
 void PPU::ConnectCartridge(const std::shared_ptr<Cartridge> &cartridge) {
     this->cartridge = cartridge;
     // Also make screen texture
+    if (texture != nullptr) {
+        SDL_DestroyTexture(texture);
+    }
     texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, nes_width, nes_height);
 }
 
