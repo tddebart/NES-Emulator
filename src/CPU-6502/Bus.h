@@ -23,6 +23,7 @@ public:
     // The Cartridge or "GamePak"
     std::shared_ptr<Cartridge> cartridge;
     
+    uint8_t controller[2];
     
     std::array<uint8_t, 2048> cpuRam;
     
@@ -40,4 +41,6 @@ public:
     
 private:
     uint32_t nSystemClockCounter = 0; 
+    
+    uint8_t controller_state[2];
 };

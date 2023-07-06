@@ -163,6 +163,18 @@ void init() {
 }
 
 void update() {
+    // Controls
+    // Order of buttons: A, B, SELECT, START, UP, DOWN, LEFT, RIGHT
+    nes.controller[0] = 0x00;
+    nes.controller[0] |= isKeyDown(SDL_SCANCODE_SPACE) ? 0x80 : 0;
+    nes.controller[0] |= isKeyDown(SDL_SCANCODE_C) ? 0x40 : 0;
+    nes.controller[0] |= isKeyDown(SDL_SCANCODE_Z) ? 0x20 : 0;
+    nes.controller[0] |= isKeyDown(SDL_SCANCODE_X) ? 0x10 : 0;
+    nes.controller[0] |= isKeyDown(SDL_SCANCODE_W) ? 0x08 : 0;
+    nes.controller[0] |= isKeyDown(SDL_SCANCODE_S) ? 0x04 : 0;
+    nes.controller[0] |= isKeyDown(SDL_SCANCODE_A) ? 0x02 : 0;
+    nes.controller[0] |= isKeyDown(SDL_SCANCODE_D) ? 0x01 : 0;
+    
     if (emulationRunning) {
         
         if (SDL_GetTicks64() > nextFrameTime) {
@@ -208,7 +220,7 @@ void update() {
         nes.reset();
     }
     // Toggle emulation
-    if (isKeyPressed(SDL_SCANCODE_SPACE)) {
+    if (isKeyPressed(SDL_SCANCODE_RETURN)) {
         emulationRunning = !emulationRunning;
     }
     // Toggle pattern table
