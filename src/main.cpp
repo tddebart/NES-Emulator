@@ -6,6 +6,7 @@
 #include "ScreenInfo.h"
 #include "SDL/Input.h"
 
+const SDL_Color white = {255, 255, 255};
 static TTF_Font* font;
 const int FONT_SIZE = 20;
 
@@ -30,6 +31,7 @@ std::string hex(uint16_t n, int d) {
 }
 
 void drawText(const std::string& text, Vector2 pos, SDL_Color color) {
+    return;
     SDL_Surface* surface = TTF_RenderText_Solid(font, text.c_str(), color);
     SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
     SDL_Rect rect = {static_cast<int>(pos.x), static_cast<int>(pos.y), surface->w, surface->h};
@@ -150,7 +152,7 @@ int main() {
 
 void init() {
     // Load the cartridge
-    cartridge = std::make_shared<Cartridge>("nestest.nes");
+    cartridge = std::make_shared<Cartridge>("donkey kong.nes");
     
     // Insert into NES
     nes.insertCartridge(cartridge);
@@ -183,7 +185,7 @@ void update() {
             } while (!nes.ppu.frame_complete);
             nes.ppu.frame_complete = false;
             
-            nextFrameTime = SDL_GetTicks64() + 1000.0f/60.0f;
+            nextFrameTime = SDL_GetTicks64() + 1000.0f/300.0f;
         }
         
     } else {
@@ -229,7 +231,13 @@ void update() {
     }
 
     drawCpu( Vector2(nes_width*4 + 10, 2));
-    drawCode(Vector2(nes_width*4 + 10, 2 + (FONT_SIZE+2) * 7), 22);
+//    drawCode(Vector2(nes_width*4 + 10, 2 + (FONT_SIZE+2) * 7), 22);
+
+    // OAM
+//    for (int i = 0; i < 64; i++) {
+//        std::string str = "$" + hex(i, 2) + ": (" + std::to_string(nes.ppu.pOAM[i * 4 + 3]) + ", " + std::to_string(nes.ppu.pOAM[i * 4 + 0]) + ") " + std::to_string(nes.ppu.pOAM[i * 4 + 1]) + " " + std::to_string(nes.ppu.pOAM[i * 4 + 2]);
+//        drawText(str, Vector2(nes_width*4 + 10, 2 + (FONT_SIZE+2) * (8 + i)), white);
+//    }
     
     // Copy the ppu screen scaled x4
     SDL_UpdateTexture(nes.ppu.screenTexture, nullptr, &nes.ppu.screenBuffer, nes_width * sizeof(uint32_t));

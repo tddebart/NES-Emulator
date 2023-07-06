@@ -20,6 +20,12 @@ void Bus::cpuWrite(uint16_t address, uint8_t data) {
     else if (address >= 0x2000 && address <= 0x3FFF) {
         ppu.cpuWrite(address & 0x0007, data);
     }
+    // DMA
+    else if (address == 0x4014) {
+        dma_page = data;
+        dma_addr = 0x00;
+        dma_transfer = true;
+    }
     // Controller
     else if (address >= 0x4016 && address <= 0x4017) {
         controller_state[address & 0x0001] = controller[address & 0x0001];
@@ -61,7 +67,27 @@ void Bus::clock() {
     ppu.clock();
     
     if (nSystemClockCounter % 3 == 0) {
-        cpu.clock();
+        if (dma_transfer) {
+            if (dma_dummy) {
+                if (nSystemClockCounter % 2 == 1) {
+                    dma_dummy = false;
+                }
+            } else {
+                if (nSystemClockCounter % 2 == 0) {
+                    dma_data = cpuRead((dma_page << 8) | dma_addr);
+                } else {
+                    ppu.pOAM[dma_addr] = dma_data;
+                    dma_addr++;
+                    
+                    if (dma_addr == 0x00) {
+                        dma_transfer = false;
+                        dma_dummy = true;
+                    }
+                }
+            }
+        } else {
+            cpu.clock();
+        }
     }
     
     if (ppu.nmi) {
