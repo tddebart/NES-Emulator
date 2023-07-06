@@ -10,6 +10,13 @@ class Cartridge {
 public:
     Cartridge(const std::string& sFileName);
     
+    enum MIRROR {
+        HORIZONTAL,
+        VERTICAL,
+        ONESCREEN_LO,
+        ONESCREEN_HI,
+    } mirror = HORIZONTAL;
+    
 private:
     uint8_t nMapperID = 0;
     uint8_t nPRGBanks = 0;

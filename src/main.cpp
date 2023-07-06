@@ -219,7 +219,7 @@ void update() {
     drawCpu( Vector2(nes_width*4 + 10, 2));
     drawCode(Vector2(nes_width*4 + 10, 2 + (FONT_SIZE+2) * 7), 22);
     
-    // Copy the ppu screen scaled x3
+    // Copy the ppu screen scaled x4
     SDL_UpdateTexture(nes.ppu.screenTexture, nullptr, &nes.ppu.screenBuffer, nes_width * sizeof(uint32_t));
     auto dstRect = SDL_Rect{0, 0, nes_width*4, nes_height*4};
     SDL_RenderCopy(renderer, nes.ppu.GetScreen(), nullptr, &dstRect);
@@ -250,4 +250,14 @@ void update() {
     SDL_RenderCopy(renderer, patternTable1, nullptr, &pattern1Rect);
     auto pattern2Rect = SDL_Rect{(nes_width*4 + 10)+pattern_width*2+10, SCREEN_HEIGHT-pattern_width*2-10, pattern_width*2, pattern_width*2};
     SDL_RenderCopy(renderer, patternTable2, nullptr, &pattern2Rect);
+    
+    // Draw temporary nametable
+//    for (int y = 0; y < 30; y++) {
+//        for (int x = 0; x < 32; x++) {
+//            uint8_t tid = (uint32_t)nes.ppu.tblName[0][y * 32 + x];
+//            auto srcRect = SDL_Rect{ (tid % 16) * 8, (tid / 16) * 8, 8, 8 };
+//            auto dstRect = SDL_Rect{ x * 8 * 4, y * 8 * 4, 8 * 4, 8 * 4 };
+//            SDL_RenderCopy(renderer, patternTable2, &srcRect, &dstRect);
+//        }
+//    }
 }
