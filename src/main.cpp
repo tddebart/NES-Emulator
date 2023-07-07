@@ -152,7 +152,7 @@ int main() {
 
 void init() {
     // Load the cartridge
-    cartridge = std::make_shared<Cartridge>("donkey kong.nes");
+    cartridge = std::make_shared<Cartridge>("Super Mario Bros (E).nes");
     
     // Insert into NES
     nes.insertCartridge(cartridge);
